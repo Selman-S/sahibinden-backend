@@ -11,8 +11,11 @@ const carSchema = new mongoose.Schema({
   year: Number,
   km: Number,
   price: Number,
-  adDate: Date, // Tarih formatı "09 Ekim 2024" gibi olduğu için string olarak tutuyoruz
-  location: String,
+  adDate: Date,
+  city: String,
+  ilce: String,
+  semt: String,
+  mahalle: String,
   lastSeenDate: { type: Date, default: Date.now },
   adUrl: String
 });
