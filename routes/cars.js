@@ -53,7 +53,8 @@ router.post('/cars', async (req, res) => {
 });
 
 // Tüm araçları listeleme (sayfalama ve filtreleme ile)
-router.get('/cars', isAuthenticated, async (req, res) => {
+// router.get('/cars', isAuthenticated, async (req, res) => {
+router.get('/cars',  async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -135,7 +136,8 @@ router.get('/cars', isAuthenticated, async (req, res) => {
 });
 
 // Tüm illeri getirme
-router.get('/cars/all-cities', isAuthenticated, async (req, res) => {
+// router.get('/cars/all-cities', isAuthenticated, async (req, res) => {
+router.get('/cars/all-cities',  async (req, res) => {
   try {
     const cities = await Car.distinct('city');
     res.status(200).json({ cities });
@@ -147,7 +149,8 @@ router.get('/cars/all-cities', isAuthenticated, async (req, res) => {
 // routes/cars.js
 
 // Marka listesini getirme
-router.get('/cars/filters', isAuthenticated, async (req, res) => {
+// router.get('/cars/filters', isAuthenticated, async (req, res) => {
+router.get('/cars/filters',  async (req, res) => {
     try {
       const brands = await Car.distinct('brand');
       res.status(200).json({ brands });
@@ -160,7 +163,8 @@ router.get('/cars/filters', isAuthenticated, async (req, res) => {
   // routes/cars.js
 
 // Belirli bir markaya ait serileri getirme
-router.get('/cars/series', isAuthenticated, async (req, res) => {
+// router.get('/cars/series', isAuthenticated, async (req, res) => {
+router.get('/cars/series',  async (req, res) => {
     try {
       const { brand } = req.query;
   
@@ -181,7 +185,8 @@ router.get('/cars/series', isAuthenticated, async (req, res) => {
 
 
 // Belirli bir araç için benzer araçların medyan fiyatını ve sayısını getirme
-router.get('/cars/:id/similar-price', isAuthenticated, async (req, res) => {
+// router.get('/cars/:id/similar-price', isAuthenticated, async (req, res) => {
+router.get('/cars/:id/similar-price',  async (req, res) => {
   try {
     const carId = req.params.id;
 
@@ -237,7 +242,8 @@ router.get('/cars/:id/similar-price', isAuthenticated, async (req, res) => {
 
 
   // Toplam araç sayısını getirme
-router.get('/cars/total', isAuthenticated, async (req, res) => {
+// router.get('/cars/total', isAuthenticated, async (req, res) => {
+router.get('/cars/total',  async (req, res) => {
   try {
     const totalCars = await Car.countDocuments();
     res.status(200).json({ totalCars });
@@ -247,7 +253,8 @@ router.get('/cars/total', isAuthenticated, async (req, res) => {
 });
 
 // Belirli bir seriye ait modelleri getirme
-router.get('/cars/models', isAuthenticated, async (req, res) => {
+// router.get('/cars/models', isAuthenticated, async (req, res) => {
+router.get('/cars/models',  async (req, res) => {
     try {
       const { brand, series } = req.query;
   
@@ -266,7 +273,8 @@ router.get('/cars/models', isAuthenticated, async (req, res) => {
   // routes/cars.js
 
 // Belirli bir marka, seri ve modele ait şehirleri getirme
-router.get('/cars/cities', isAuthenticated, async (req, res) => {
+// router.get('/cars/cities', isAuthenticated, async (req, res) => {
+router.get('/cars/cities',  async (req, res) => {
   try {
     const { brand, series, model } = req.query;
 
@@ -284,7 +292,8 @@ router.get('/cars/cities', isAuthenticated, async (req, res) => {
   
 
 // Belirli bir ile ait ilçeleri getirme
-router.get('/cars/districts', isAuthenticated, async (req, res) => {
+// router.get('/cars/districts', isAuthenticated, async (req, res) => {
+router.get('/cars/districts',  async (req, res) => {
   try {
     const { city } = req.query;
 
@@ -303,7 +312,8 @@ router.get('/cars/districts', isAuthenticated, async (req, res) => {
 // routes/cars.js dosyasına ekleyin
 
 // Avantajlı araçları getirme
-router.get('/cars/advantageous', isAuthenticated, async (req, res) => {
+// router.get('/cars/advantageous', isAuthenticated, async (req, res) => {
+router.get('/cars/advantageous',  async (req, res) => {
   try {
     const { limit = 10, offset = 0 } = req.query;
     
@@ -336,7 +346,8 @@ router.get('/cars/advantageous', isAuthenticated, async (req, res) => {
 // routes/cars.js
 
 // Tavsiye edilen araçları getirme
-router.post('/cars/recommend', isAuthenticated, async (req, res) => {
+// router.post('/cars/recommend', isAuthenticated, async (req, res) => {
+router.post('/cars/recommend',  async (req, res) => {
   try {
     const { budget, brand, model, yearMin, yearMax, kmMax, page = 1, limit = 10 } = req.body;
     
@@ -404,7 +415,8 @@ router.post('/cars/recommend', isAuthenticated, async (req, res) => {
 // routes/cars.js dosyasına ekleyin
 
 // Tüm markaları getir
-router.get('/cars/brands', isAuthenticated, async (req, res) => {
+// router.get('/cars/brands', isAuthenticated, async (req, res) => {
+router.get('/cars/brands',  async (req, res) => {
   try {
     const brands = await Car.distinct('brand');
     res.status(200).json(brands);
@@ -414,7 +426,8 @@ router.get('/cars/brands', isAuthenticated, async (req, res) => {
 });
 
 // Belirli bir markaya ait serileri getir
-router.get('/cars/series/:brand', isAuthenticated, async (req, res) => {
+// router.get('/cars/series/:brand', isAuthenticated, async (req, res) => {
+router.get('/cars/series/:brand',  async (req, res) => {
   try {
     const { brand } = req.params;
     const series = await Car.distinct('series', { brand });
@@ -425,7 +438,8 @@ router.get('/cars/series/:brand', isAuthenticated, async (req, res) => {
 });
 
 // Belirli bir marka ve seriye ait modelleri getir
-router.get('/cars/models/:brand/:series', isAuthenticated, async (req, res) => {
+// router.get('/cars/models/:brand/:series', isAuthenticated, async (req, res) => {
+router.get('/cars/models/:brand/:series',  async (req, res) => {
   try {
     const { brand, series } = req.params;
     const models = await Car.distinct('model', { brand, series });
