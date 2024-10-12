@@ -299,6 +299,141 @@ router.get('/cars/districts', isAuthenticated, async (req, res) => {
     res.status(500).json({ message: 'İlçeler alınırken bir hata oluştu', error });
   }
 });
+
+// routes/cars.js dosyasına ekleyin
+
+// Avantajlı araçları getirme
+router.get('/cars/advantageous', isAuthenticated, async (req, res) => {
+  try {
+    const { limit = 10, offset = 0 } = req.query;
+    
+    // Tüm araçları fiyatlarına göre sıralayalım
+    const cars = await Car.find().sort({ price: 1 }).skip(parseInt(offset)).limit(parseInt(limit));
+    
+    // Her araç için ortalama fiyatı hesaplayalım
+    const carsWithAveragePrice = await Promise.all(cars.map(async (car) => {
+      const averagePrice = await Car.aggregate([
+        { $match: { brand: car.brand, series: car.series, model: car.model } },
+        { $group: { _id: null, avgPrice: { $avg: '$price' } } }
+      ]);
+      
+      return {
+        ...car.toObject(),
+        averagePrice: averagePrice[0]?.avgPrice || car.price,
+        priceDifference: ((car.price - averagePrice[0]?.avgPrice) / averagePrice[0]?.avgPrice) * 100
+      };
+    }));
+    
+    // Fiyat farkına göre sıralayalım
+    const advantageousCars = carsWithAveragePrice.sort((a, b) => a.priceDifference - b.priceDifference);
+    
+    res.status(200).json(advantageousCars);
+  } catch (error) {
+    res.status(500).json({ message: 'Avantajlı araçlar alınırken bir hata oluştu', error });
+  }
+});
+
+// routes/cars.js
+
+// Tavsiye edilen araçları getirme
+router.post('/cars/recommend', isAuthenticated, async (req, res) => {
+  try {
+    const { budget, brand, model, yearMin, yearMax, kmMax, page = 1, limit = 10 } = req.body;
+    
+    let query = {};
+    if (brand) query.brand = brand;
+    if (model) query.model = model;
+    if (yearMin || yearMax) {
+      query.year = {};
+      if (yearMin) query.year.$gte = parseInt(yearMin);
+      if (yearMax) query.year.$lte = parseInt(yearMax);
+    }
+    if (kmMax) query.km = { $lte: parseInt(kmMax) };
+    if (budget) query.price = { $lte: parseInt(budget) };
+    
+    const skip = (page - 1) * limit;
+    
+    // Tavsiye edilen araçları al
+    const recommendedCars = await Car.find(query)
+      .sort({ price: 1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit));
+    
+    // Her araç için benzer araç sayısını ve ortalama fiyatını hesapla
+    const recommendedCarsWithStats = await Promise.all(recommendedCars.map(async (car) => {
+      // Benzer araç kriterleri
+      const similarCarsQuery = {
+        _id: { $ne: car._id },
+        brand: car.brand,
+        series: car.series,
+        model: car.model,
+        year: car.year,
+        km: { $gte: car.km - 25000, $lte: car.km + 25000 }, // ±25,000 KM aralığı
+      };
+      
+      // Benzer araçları bul
+      const similarCars = await Car.find(similarCarsQuery).select('price');
+      
+      const count = similarCars.length;
+      const averagePrice = similarCars.reduce((acc, curr) => acc + curr.price, 0) / (count || 1);
+      
+      return {
+        ...car.toObject(),
+        similarCount: count,
+        averagePrice: averagePrice.toFixed(2), // 2 ondalık basamak
+      };
+    }));
+    
+    // Toplam tavsiye edilen araç sayısını al
+    const totalRecommended = await Car.countDocuments(query);
+    
+    res.status(200).json({
+      cars: recommendedCarsWithStats,
+      total: totalRecommended,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      totalPages: Math.ceil(totalRecommended / limit),
+    });
+  } catch (error) {
+    console.error('Tavsiye edilen araçlar alınırken hata:', error);
+    res.status(500).json({ message: 'Tavsiye edilen araçlar alınırken bir hata oluştu', error });
+  }
+});
+
+
+// routes/cars.js dosyasına ekleyin
+
+// Tüm markaları getir
+router.get('/cars/brands', isAuthenticated, async (req, res) => {
+  try {
+    const brands = await Car.distinct('brand');
+    res.status(200).json(brands);
+  } catch (error) {
+    res.status(500).json({ message: 'Markalar alınırken bir hata oluştu', error });
+  }
+});
+
+// Belirli bir markaya ait serileri getir
+router.get('/cars/series/:brand', isAuthenticated, async (req, res) => {
+  try {
+    const { brand } = req.params;
+    const series = await Car.distinct('series', { brand });
+    res.status(200).json(series);
+  } catch (error) {
+    res.status(500).json({ message: 'Seriler alınırken bir hata oluştu', error });
+  }
+});
+
+// Belirli bir marka ve seriye ait modelleri getir
+router.get('/cars/models/:brand/:series', isAuthenticated, async (req, res) => {
+  try {
+    const { brand, series } = req.params;
+    const models = await Car.distinct('model', { brand, series });
+    res.status(200).json(models);
+  } catch (error) {
+    res.status(500).json({ message: 'Modeller alınırken bir hata oluştu', error });
+  }
+});
   
 
 module.exports = router;
