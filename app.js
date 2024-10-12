@@ -7,10 +7,14 @@ const session = require('express-session');
 const MongoStore = require('connect-mongo');
 const helmet = require('helmet');
 const compression = require('compression');
+const morgan = require('morgan');
+
+
 
 const app = express();
 app.use(helmet());
 app.use(compression());
+app.use(morgan('combined'));
 // Middleware
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
