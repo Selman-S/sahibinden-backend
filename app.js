@@ -21,7 +21,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // app.use(express.json());
 // CORS Ayarları
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://sahibinden-frontend.vercel.app'], // Frontend domaininizi buraya ekleyin
+  origin: ['http://localhost:3000', 'https://sahibinden-frontend.vercel.app',"https://www.sahibinden.com"], // Frontend domaininizi buraya ekleyin
   methods: 'GET,POST,PUT,DELETE',
   credentials: true
 }));
