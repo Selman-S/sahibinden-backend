@@ -12,45 +12,69 @@ moment.locale('tr'); // Locale ayarlanıyor
 
 // Araç verilerini kaydetme veya güncelleme
 router.post('/cars', async (req, res) => {
-  console.log("araba geldi");
-  
   try {
-    const cars = req.body; // Uzantıdan gelen araç listesi
+    const cars = req.body; // Gönderilen araç listesi
     let savedCount = 0;
-    let data=[]
-  
-    const allCar = await Car.find()
-    const carCount = allCar.length;
+    let data = [];
 
-    
     for (const carData of cars) {
-      const { adId, adDate } = carData;
-      
-      // adDate'ı Date formatına dönüştür
-      if (adDate) {
-        const parsedAdDate = moment(adDate, "DD MMMM YYYY").toDate();
-        carData.adDate = parsedAdDate;
+      const { adId, price } = carData;
+
+      // Mevcut aracı bul
+      let existingCar = await Car.findOne({ adId });
+
+      if (existingCar) {
+        // Fiyat değişmişse, eski fiyatı priceHistory alanına kaydet
+        if (existingCar.price !== price) {
+          existingCar.priceHistory.push({
+            price: existingCar.price,
+            updatedAt: Date.now()
+          });
+        }
+
+        // Aracı güncelle
+        existingCar = await Car.findOneAndUpdate(
+          { adId },
+          { ...carData, lastSeenDate: Date.now(), priceHistory: existingCar.priceHistory },
+          { new: true }
+        );
+      } else {
+        // Yeni araç ekle
+        await Car.create(carData);
       }
-      await Car.findOneAndUpdate(
-        { adId },
-        { ...carData, lastSeenDate: Date.now() },
-        { upsert: true, new: true }
-      );
-      data.push(carData)
+
+      data.push(carData);
       savedCount++;
     }
 
-    const newallCar = await Car.find()
-    const newcarCount = newallCar.length;
-    console.log(newcarCount-carCount,"araç kaydedildi");
-    
-
-    res.status(200).json({data, message: `${savedCount} araç bilgisi kaydedildi` });
+    res.status(200).json({ data, message: `${savedCount} araç bilgisi kaydedildi` });
   } catch (error) {
     console.error('Veri kaydedilirken hata:', error);
     res.status(500).json({ message: 'Veri kaydedilirken bir hata oluştu', error });
   }
 });
+
+
+
+// Belirli bir aracın fiyat geçmişini getirme
+router.get('/cars/:adId/price-history', async (req, res) => {
+  try {
+    const { adId } = req.params;
+
+    // Aracı bul
+    const car = await Car.findOne({ adId }).select('priceHistory');
+
+    if (!car) {
+      return res.status(404).json({ message: 'Araç bulunamadı' });
+    }
+
+    res.status(200).json({ priceHistory: car.priceHistory });
+  } catch (error) {
+    console.error('Fiyat geçmişi alınırken hata:', error);
+    res.status(500).json({ message: 'Fiyat geçmişi alınırken bir hata oluştu', error });
+  }
+});
+
 
 // Tüm araçları listeleme (sayfalama ve filtreleme ile)
 // router.get('/cars', isAuthenticated, async (req, res) => {
