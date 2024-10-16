@@ -10,6 +10,7 @@ moment.locale('tr'); // Locale ayarlanıyor
 
 
 
+
 // Araç verilerini kaydetme veya güncelleme
 router.post('/cars', async (req, res) => {
   try {
@@ -18,7 +19,13 @@ router.post('/cars', async (req, res) => {
     let data = [];
 
     for (const carData of cars) {
-      const { adId, price } = carData;
+      const { adId, price,adDate } = carData;
+
+        // adDate'ı Date formatına dönüştür
+        if (adDate) {
+          const parsedAdDate = moment(adDate, "DD MMMM YYYY").toDate();
+          carData.adDate = parsedAdDate;
+        }
 
       // Mevcut aracı bul
       let existingCar = await Car.findOne({ adId });
@@ -35,7 +42,7 @@ router.post('/cars', async (req, res) => {
         // Aracı güncelle
         existingCar = await Car.findOneAndUpdate(
           { adId },
-          { ...carData, lastSeenDate: Date.now(), priceHistory: existingCar.priceHistory },
+          { ...carData, lastSeenDate: Date.now(), priceHistory: existingCar.priceHistory,price:existingCar.price },
           { new: true }
         );
       } else {
@@ -74,6 +81,7 @@ router.get('/cars/:adId/price-history', async (req, res) => {
     res.status(500).json({ message: 'Fiyat geçmişi alınırken bir hata oluştu', error });
   }
 });
+
 
 
 // Tüm araçları listeleme (sayfalama ve filtreleme ile)
