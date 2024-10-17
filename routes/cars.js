@@ -102,7 +102,7 @@ router.post('/cars', async (req, res) => {
         // Fiyat değişmişse, eski fiyatı priceHistory alanına kaydet
         if (existingCar.price !== price) {
           existingCar.priceHistory.push({
-            price: existingCar.price,
+            price: price,
             updatedAt: Date.now()
           });
         }
