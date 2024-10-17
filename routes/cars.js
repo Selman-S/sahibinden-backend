@@ -7,8 +7,76 @@ const mongoose = require('mongoose');
 const moment = require('moment'); // Moment.js ekleniyor
 require('moment/locale/tr'); // Türkçe dil desteği
 moment.locale('tr'); // Locale ayarlanıyor
+const axios = require('axios'); // HTTP istekleri için
+require('dotenv').config(); // .env dosyasını kullanmak için
 
+// Araç değerlendirme rotası
+router.post('/cars/evaluate', async (req, res) => {
+  try {
+    const carData = req.body;
+    console.log(carData);
 
+    // 'carData' nesnesini JSON formatında ve okunabilir bir şekilde stringe çeviriyoruz
+    const carDataString = JSON.stringify(carData, null, 2);
+
+    // ChatGPT için istem oluşturma
+    const prompt = `Sen deneyimli bir araba eksperisin. Aşağıdaki araç bilgilerini değerlendir ve araç hakkında detaylı bir analiz yap. Bu araçın eksilerini artılarını kısaca söyle. Araç satın almak için uygun mu? cevap 10 cümleyi geçmesin.
+
+Araç Bilgileri:
+${carDataString}
+`;
+
+    // OpenAI API çağrısı
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'Sen deneyimli bir araba eksperisin.' },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorData = await openaiResponse.json();
+      throw new Error(`OpenAI API hatası: ${errorData.error.message}`);
+    }
+
+    const responseData = await openaiResponse.json();
+    console.log(responseData);
+    
+    const evaluation = responseData.choices[0].message.content;
+    console.log(evaluation);
+    
+
+    // Değerlendirme sonucunu döndürün
+    res.status(200).json({ evaluation });
+
+  } catch (error) {
+    console.error('Araç değerlendirmesi sırasında hata:', error.response?.data || error.message);
+   
+    // Hata mesajını kontrol ederek spesifik bir yanıt verebilirsiniz
+    if (error.response && error.response.data && error.response.data.error) {
+      const apiError = error.response.data.error;
+      if (apiError.code === 'insufficient_quota') {
+        return res.status(402).json({
+          message: 'API kullanım kotanız dolmuş. Lütfen OpenAI hesap limitlerinizi kontrol edin.',
+        });
+      }
+    } else if (error.message.includes('OpenAI API hatası')) {
+      return res.status(500).json({ message: 'OpenAI API hatası: ' + error.message });
+    }
+
+    res.status(500).json({ message: 'Araç değerlendirmesi yapılamadı.' });
+  }
+});
 
 
 // Araç verilerini kaydetme veya güncelleme
