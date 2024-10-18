@@ -8,119 +8,120 @@ require('dotenv').config();
 
 // Araç değerlendirme
 exports.evaluateCar = async (req, res) => {
-    try {
-      const carData = req.body;
-      console.log(carData);
-  
-      // 'carData' nesnesini JSON formatında ve okunabilir bir şekilde stringe çeviriyoruz
-      const carDataString = JSON.stringify(carData, null, 2);
-  
-      // Benzer araçların ortalama fiyatını ve sayısını hesaplama
-      const { Marka: brand, Seri: series, Model: model, Yıl: year, KM: kmString, Fiyat: priceString } = carData;
-  
-      // 'KM' ve 'Fiyat' alanlarını sayıya dönüştürme
-      const km = parseInt(kmString.replace(/\D/g, '')) || 0; // Örneğin '294.000' -> 294000
-      const price = parseInt(priceString.replace(/\D/g, '')) || 0; // Örneğin '100.000 TL' -> 100000
-  
-      // KM aralığını belirleyelim (örneğin, ±25,000 km)
-      const kmRange = 35000;
-      const kmMin = km - kmRange;
-      const kmMax = km + kmRange;
-  
-      // Sorgu kriterlerini oluştur
-      const query = {
-        brand,
-        series,
-        model,
-        year: parseInt(year),
-        km: { $gte: kmMin, $lte: kmMax },
-      };
-  
-      // Benzer araçları bul
-      const similarCars = await Car.find(query).select('price');
-  
-      const prices = similarCars.map(c => c.price);
-      const count = prices.length;
-  
-      let averagePrice = 0;
-  
-      if (count > 0) {
-        averagePrice = prices.reduce((sum, p) => sum + p, 0) / count;
-      }
-  
-      // Yüzde farkını hesaplayalım
-      let priceDifferencePercentage = 0;
-      let priceComparisonText = '';
-  
-      if (averagePrice > 0) {
-        priceDifferencePercentage = ((price - averagePrice) / averagePrice) * 100;
-  
-        if (priceDifferencePercentage < 0) {
-          priceComparisonText = `%${Math.abs(priceDifferencePercentage.toFixed(2))} daha ucuz`;
-        } else if (priceDifferencePercentage > 0) {
-          priceComparisonText = `%${priceDifferencePercentage.toFixed(2)} daha pahalı`;
-        } else {
-          priceComparisonText = `ortalama fiyat ile aynı`;
-        }
-      } else {
-        priceComparisonText = 'Benzer araç bulunamadı, fiyat karşılaştırması yapılamıyor.';
-      }
-  
-      // Bilgileri prompt'a ekleyelim
-      const additionalInfo = `Bu araç ile benzer ${count} araç bulunmaktadır. Benzer araçların ortalama fiyatı ${averagePrice.toFixed(2)} TL'dir. Bu araç ${priceComparisonText}.`;
-  
-      // Yeni prompt
-      const prompt = `${additionalInfo}
-  
-  Sen deneyimli bir araba eksperisin. Aşağıdaki araç bilgilerini değerlendir ve araç hakkında detaylı bir analiz yap. Bu aracın eksilerini ve artılarını kısaca söyle. Araç satın almak için uygun mu? Cevap 10 cümleyi geçmesin.
-  
-  Araç Bilgileri:
-  ${carDataString}
-  `;
-  
-      // OpenAI API çağrısı
-      const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: 'Sen deneyimli bir araba eksperisin.' },
-            { role: 'user', content: prompt },
-          ],
-          max_tokens: 500,
-          temperature: 0.7,
-        }),
-      });
-  
-      if (!openaiResponse.ok) {
-        const errorData = await openaiResponse.json();
-        throw new Error(`OpenAI API hatası: ${errorData.error.message}`);
-      }
-  
-      const responseData = await openaiResponse.json();
-      console.log(responseData);
-  
-      const evaluation = responseData.choices[0].message.content;
-      console.log(evaluation);
-  
-      // Değerlendirme sonucunu döndürün
-      res.status(200).json({ evaluation });
-    } catch (error) {
-      console.error('Araç değerlendirmesi sırasında hata:', error.message);
-  
-      // Hata mesajını kontrol ederek spesifik bir yanıt verebilirsiniz
-      if (error.message.includes('OpenAI API hatası')) {
-        return res.status(500).json({ message: 'OpenAI API hatası: ' + error.message });
-      }
-  
-      res.status(500).json({ message: 'Araç değerlendirmesi yapılamadı.' });
+  try {
+    const carData = req.body;
+
+    // 'carData' nesnesini JSON formatında ve okunabilir bir şekilde stringe çeviriyoruz
+    const carDataString = JSON.stringify(carData, null, 2);
+
+    // Benzer araçların ortalama fiyatını ve sayısını hesaplama
+    const { Marka: brand, Seri: series, Model: model, Yıl: year, KM: kmString, fiyat: priceString } = carData;
+
+    // 'KM' ve 'Fiyat' alanlarını sayıya dönüştürme
+    const km = parseInt(kmString.replace(/\D/g, '')) || 0; // Örneğin '294.000' -> 294000
+    const price = parseInt(priceString.replace(/\D/g, '')) || 0; // Örneğin '100.000 TL' -> 100000
+
+    // KM aralığını belirleyelim (örneğin, ±25,000 km)
+    const kmRange = 35000;
+    const kmMin = km - kmRange;
+    const kmMax = km + kmRange;
+
+    // Sorgu kriterlerini oluştur
+    const query = {
+      brand,
+      series,
+      model,
+      year: parseInt(year),
+      km: { $gte: kmMin, $lte: kmMax },
+    };
+
+    // Benzer araçları bul
+    const similarCars = await Car.find(query).select('price');
+
+    const prices = similarCars.map(c => c.price);
+    const count = prices.length;
+
+    let averagePrice = 0;
+
+    if (count > 0) {
+      averagePrice = prices.reduce((sum, p) => sum + p, 0) / count;
     }
-  };
-  
+
+    // Yüzde farkını hesaplayalım
+    let priceDifferencePercentage = 0;
+    let priceComparisonText = '';
+
+    if (averagePrice > 0) {
+      priceDifferencePercentage = ((price - averagePrice) / averagePrice) * 100;
+
+      if (priceDifferencePercentage < 0) {
+        priceComparisonText = `%${Math.abs(priceDifferencePercentage.toFixed(2))} daha ucuz`;
+      } else if (priceDifferencePercentage > 0) {
+        priceComparisonText = `%${priceDifferencePercentage.toFixed(2)} daha pahalı`;
+      } else {
+        priceComparisonText = `ortalama fiyat ile aynı`;
+      }
+    } else {
+      priceComparisonText = 'Benzer araç bulunamadı, fiyat karşılaştırması yapılamıyor.';
+    }
+
+    // Bilgileri prompt'a ekleyelim
+    const additionalInfo = `Bu araç ile benzer ${count} araç bulunmaktadır. Benzer araçların ortalama fiyatı ${averagePrice.toFixed(2)} TL'dir. Bu araç ${priceComparisonText}.`;
+
+    // Yeni prompt
+    const prompt = `${additionalInfo}
+
+Sen deneyimli bir araba eksperisin. Aşağıdaki araç bilgilerini değerlendir ve araç hakkında detaylı bir analiz yap. Bu aracın eksilerini ve artılarını kısaca söyle. Araç satın almak için uygun mu? Cevap 10 cümleyi geçmesin.
+
+Araç Bilgileri:
+${carDataString}
+`;
+
+    // OpenAI API çağrısı
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'Sen deneyimli bir araba eksperisin.' },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorData = await openaiResponse.json();
+      throw new Error(`OpenAI API hatası: ${errorData.error.message}`);
+    }
+
+    const responseData = await openaiResponse.json();
+
+    const evaluation = responseData.choices[0].message.content;
+
+    // Değerlendirme sonucunu ve ek bilgileri döndürün
+    res.status(200).json({
+      evaluation,
+      similarCount: count,
+      averagePrice: averagePrice.toFixed(2),
+    });
+  } catch (error) {
+    console.error('Araç değerlendirmesi sırasında hata:', error.message);
+
+    // Hata mesajını kontrol ederek spesifik bir yanıt verebilirsiniz
+    if (error.message.includes('OpenAI API hatası')) {
+      return res.status(500).json({ message: 'OpenAI API hatası: ' + error.message });
+    }
+
+    res.status(500).json({ message: 'Araç değerlendirmesi yapılamadı.' });
+  }
+};
+
 
 // Araç verilerini kaydetme veya güncelleme
 exports.saveOrUpdateCars = async (req, res) => {
