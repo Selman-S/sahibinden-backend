@@ -163,6 +163,8 @@ exports.saveOrUpdateCars = async (req, res) => {
             existingCar.price = price;
           }
 
+          await Car.deleteOne({ adId });
+
           // Aracı kaydet
           await existingCar.save();
 
