@@ -125,73 +125,97 @@ ${carDataString}
 
 // Araç verilerini kaydetme veya güncelleme
 exports.saveOrUpdateCars = async (req, res) => {
-    try {
-      const cars = req.body; // Gönderilen araç listesi
-      let savedCount = 0;
-      let newRecordsCount = 0;
-      let updatedRecordsCount = 0;
-      let data = [];
-  
-      for (const carData of cars) {
-        const { adId, price, adDate } = carData;
-  
-        // adDate'i Date formatına dönüştür
-        if (adDate) {
-          const parsedAdDate = moment(adDate, "DD MMMM YYYY").toDate();
-          carData.adDate = parsedAdDate;
-        }
-  
-        // Mevcut aracı bul
-        let existingCar = await Car.findOne({ adId });
-  
-        if (existingCar) {
-          // Aracın en son görüldüğü tarihi güncelle
+  try {
+    const cars = req.body; // Gönderilen araç listesi
+    let savedCount = 0;
+    let newRecordsCount = 0;
+    let updatedRecordsCount = 0;
+    let data = [];
+
+    for (const carData of cars) {
+      const { adId, price, adDate, brand, series, model } = carData;
+
+      // adDate'i Date formatına dönüştür
+      if (adDate) {
+        const parsedAdDate = moment(adDate, "DD MMMM YYYY").toDate();
+        carData.adDate = parsedAdDate;
+      }
+
+      // Mevcut aracı adId ile bul
+      let existingCar = await Car.findOne({ adId });
+
+      if (existingCar) {
+        // Marka, seri ve modelin aynı olup olmadığını kontrol et
+        if (
+          existingCar.brand === brand &&
+          existingCar.series === series &&
+          existingCar.model === model
+        ) {
+          // Aynı araç, güncelleme yap
           existingCar.lastSeenDate = Date.now();
-  
+
           // Fiyat değişmişse, priceHistory'ye ekle ve price'ı güncelle
           if (existingCar.price !== price) {
             existingCar.priceHistory.push({
               price: price,
-              updatedAt: Date.now()
+              updatedAt: Date.now(),
             });
             existingCar.price = price;
           }
-  
+
           // Aracı kaydet
           await existingCar.save();
-  
+
           // Güncellenmiş aracın güncel verilerini ve fiyat geçmişini al
           const updatedCar = await Car.findOne({ adId });
-  
+
           // Statüyü 'updated' olarak ayarla ve priceHistory'yi ekle
           data.push({ carData: updatedCar, status: 'updated' });
           updatedRecordsCount++;
         } else {
-          // Yeni araç ekle
+          // Aynı adId fakat farklı araç, yeni kayıt oluştur
           carData.lastSeenDate = Date.now();
-          carData.priceHistory = [{
-            price: price,
-            updatedAt: Date.now()
-          }];
+          carData.priceHistory = [
+            {
+              price: price,
+              updatedAt: Date.now(),
+            },
+          ];
           const newCar = await Car.create(carData);
-  
+
           // Statüyü 'new' olarak ayarla ve priceHistory'yi ekle
           data.push({ carData: newCar, status: 'new' });
           newRecordsCount++;
         }
-  
-        savedCount++;
+      } else {
+        // Yeni araç ekle
+        carData.lastSeenDate = Date.now();
+        carData.priceHistory = [
+          {
+            price: price,
+            updatedAt: Date.now(),
+          },
+        ];
+        const newCar = await Car.create(carData);
+
+        // Statüyü 'new' olarak ayarla ve priceHistory'yi ekle
+        data.push({ carData: newCar, status: 'new' });
+        newRecordsCount++;
       }
-  
-      res.status(200).json({
-        data,
-        message: `${savedCount} araç bilgisi kaydedildi. Yeni kayıtlar: ${newRecordsCount}, Güncellenen kayıtlar: ${updatedRecordsCount}`
-      });
-    } catch (error) {
-      console.error('Veri kaydedilirken hata:', error);
-      res.status(500).json({ message: 'Veri kaydedilirken bir hata oluştu', error });
+
+      savedCount++;
     }
-  };
+
+    res.status(200).json({
+      data,
+      message: `${savedCount} araç bilgisi kaydedildi. Yeni kayıtlar: ${newRecordsCount}, Güncellenen kayıtlar: ${updatedRecordsCount}`,
+    });
+  } catch (error) {
+    console.error('Veri kaydedilirken hata:', error);
+    res.status(500).json({ message: 'Veri kaydedilirken bir hata oluştu', error });
+  }
+};
+
   
   
 
