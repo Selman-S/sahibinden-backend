@@ -163,19 +163,19 @@ exports.saveOrUpdateCars = async (req, res) => {
             existingCar.price = price;
           }
 
-          await Car.deleteOne({ adId });
-
           // Aracı kaydet
           await existingCar.save();
 
           // Güncellenmiş aracın güncel verilerini ve fiyat geçmişini al
-          const updatedCar = await Car.findOne({ adId });
-
-          // Statüyü 'updated' olarak ayarla ve priceHistory'yi ekle
-          data.push({ carData: updatedCar, status: 'updated' });
+          data.push({ carData: existingCar, status: 'updated' });
           updatedRecordsCount++;
         } else {
-          // Aynı adId fakat farklı araç, yeni kayıt oluştur
+          // Marka, seri veya model farklı ise, mevcut aracı sil ve yeni aracı ekle
+
+          // Mevcut aracı sil
+          await Car.deleteOne({ adId });
+
+          // Yeni araç ekle
           carData.lastSeenDate = Date.now();
           carData.priceHistory = [
             {
@@ -185,8 +185,8 @@ exports.saveOrUpdateCars = async (req, res) => {
           ];
           const newCar = await Car.create(carData);
 
-          // Statüyü 'new' olarak ayarla ve priceHistory'yi ekle
-          data.push({ carData: newCar, status: 'new' });
+          // Statüyü 'replaced' olarak ayarla ve priceHistory'yi ekle
+          data.push({ carData: newCar, status: 'replaced' });
           newRecordsCount++;
         }
       } else {
