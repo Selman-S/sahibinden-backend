@@ -71,7 +71,7 @@ exports.evaluateCar = async (req, res) => {
     // Yeni prompt
     const prompt = `${additionalInfo}
 
-Sen deneyimli bir araba eksperisin. Aşağıdaki araç bilgilerini değerlendir ve araç hakkında detaylı bir analiz yap. Bu aracın eksilerini ve artılarını kısaca söyle. Araç satın almak için uygun mu? Cevap 10 cümleyi geçmesin.
+Sen deneyimli bir araba eksperisin. Aşağıdaki araç bilgilerini inceleyip kısaca analiz et. Aracın artı ve eksilerini, Türkiye piyasasındaki tutulurluğunu, yakıt türünü ve varsa kronik arızalarını değerlendir. Bu modelin ikinci el piyasasında satışı kolay mı, alıcıyı zorlar mı? Tramer kaydı, boyalı veya değişen parça olup olmadığını göz önünde bulundurarak, bu aracın satın alınabilir olup olmadığı konusunda net bir değerlendirme yap. Cevap, 10 cümleyi geçmesin.
 
 Araç Bilgileri:
 ${carDataString}
