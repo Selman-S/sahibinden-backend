@@ -48,10 +48,12 @@ app.use(session({
 const carRoutes = require('./routes/cars');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
+const containerRoutes = require('./routes/containers');
 
 app.use('/api', carRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/containers', containerRoutes);
 
 // Hata yakalama middleware'i
 app.use((err, req, res, next) => {
