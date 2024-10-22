@@ -8,15 +8,13 @@ require('dotenv').config();
 const RequestCount = require('../models/RequestCount');
 
 
-MAX_EVALUATIONS_PER_WEEK = 15
+MAX_EVALUATIONS_PER_WEEK = 10
 // Araç değerlendirme
 exports.evaluateCar = async (req, res) => {
   try {
     const userApiKey = req.body.openaiApiKey;
     const userIp = req.body.ip || req.connection.remoteAddress;
 
-    console.log("userIp", userIp);
-    console.log("userApiKey", userApiKey);
 
     // Eğer kullanıcı kendi API anahtarını kullanmıyorsa, istek limitini kontrol et
     if (!userApiKey) {
@@ -167,6 +165,90 @@ ${carDataString}
   }
 };
 
+// controllers/carsController.js
+
+exports.chatWithExpert = async (req, res) => {
+  try {
+    const { message, carData, openaiApiKey } = req.body;
+    const userIp = req.body.ip || req.connection.remoteAddress;
+    const userApiKey = req.body.openaiApiKey;
+    // Rate limiting kontrolü (eğer kullanıcı kendi API anahtarını kullanmıyorsa)
+    if (!userApiKey) {
+      // IP adresi için kayıt bul veya oluştur
+      let requestCount = await RequestCount.findOne({ ip: userIp });
+
+      if (!requestCount) {
+        // Yeni kayıt oluştur
+        requestCount = new RequestCount({ ip: userIp, count: 1, lastRequestDate: new Date() });
+      } else {
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+
+        // Eğer son istek tarihi bir haftadan eskiyse, sayacı sıfırla
+        if (requestCount.lastRequestDate < oneWeekAgo) {
+          requestCount.count = 1;
+          requestCount.lastRequestDate = now;
+        } else {
+          // Haftalık limit kontrolü
+          if (requestCount.count >= MAX_EVALUATIONS_PER_WEEK) {
+            return res.status(429).json({ message: 'Haftalık istek limitine ulaştınız. Lütfen bir hafta sonra tekrar deneyin.' });
+          }
+          requestCount.count += 1;
+          requestCount.lastRequestDate = now;
+        }
+      }
+
+      // Kayıtları güncelle
+      await requestCount.save();
+    }
+
+    // Araç bilgilerini ve kullanıcı mesajını prompt olarak hazırlayalım
+    const carDataString = JSON.stringify(carData, null, 2);
+
+    const prompt = `
+    Sen deneyimli bir araba eksperisin. Kullanıcı sana aşağıdaki araç hakkında soru sordu. Soruya detaylı ve yardımcı bir cevap ver.
+
+    Araç Bilgileri:
+    ${carDataString}
+
+    Kullanıcı Sorusu:
+    ${message}
+    `;
+   
+    
+
+    // OpenAI API çağrısı
+    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${openaiApiKey || process.env.OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: 'Sen deneyimli bir araba eksperisin.' },
+          { role: 'user', content: prompt },
+        ],
+        max_tokens: 500,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!openaiResponse.ok) {
+      const errorData = await openaiResponse.json();
+      throw new Error(`OpenAI API hatası: ${errorData.error.message}`);
+    }
+
+    const responseData = await openaiResponse.json();
+    const reply = responseData.choices[0].message.content;
+
+    res.status(200).json({ reply });
+  } catch (error) {
+    console.error('chatWithExpert error:', error.message);
+    res.status(500).json({ message: 'Chatbot yanıtı alınamadı.' });
+  }
+};
 
 
 // Araç verilerini kaydetme veya güncelleme

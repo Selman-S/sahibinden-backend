@@ -7,6 +7,8 @@ const carsController = require('../controllers/carsController');
 // Araç değerlendirme rotası
 router.post('/cars/evaluate', carsController.evaluateCar);
 
+router.post('/cars/chat', carsController.chatWithExpert);
+
 // Araç verilerini kaydetme veya güncelleme
 router.post('/cars', carsController.saveOrUpdateCars);
 
