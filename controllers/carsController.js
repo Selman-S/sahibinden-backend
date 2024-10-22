@@ -8,7 +8,7 @@ require('dotenv').config();
 const RequestCount = require('../models/RequestCount');
 
 
-MAX_EVALUATIONS_PER_WEEK = 10
+MAX_EVALUATIONS_PER_WEEK = 15
 // Araç değerlendirme
 exports.evaluateCar = async (req, res) => {
   try {
