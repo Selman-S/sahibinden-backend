@@ -22,7 +22,7 @@ exports.evaluateCar = async (req, res) => {
     const price = parseInt(priceString.replace(/\D/g, '')) || 0; // Örneğin '100.000 TL' -> 100000
 
     // KM aralığını belirleyelim (örneğin, ±25,000 km)
-    const kmRange = 35000;
+    const kmRange = 25000;
     const kmMin = km - kmRange;
     const kmMax = km + kmRange;
 
