@@ -5,10 +5,49 @@ require('moment/locale/tr');
 moment.locale('tr');
 const fetch = require('node-fetch');
 require('dotenv').config();
+const RequestCount = require('../models/RequestCount');
 
+
+MAX_EVALUATIONS_PER_WEEK = 10
 // Araç değerlendirme
 exports.evaluateCar = async (req, res) => {
   try {
+    const userApiKey = req.body.openaiApiKey;
+    const userIp = req.body.ip || req.connection.remoteAddress;
+
+    console.log("userIp", userIp);
+    console.log("userApiKey", userApiKey);
+
+    // Eğer kullanıcı kendi API anahtarını kullanmıyorsa, istek limitini kontrol et
+    if (!userApiKey) {
+      // IP adresi için kayıt bul veya oluştur
+      let requestCount = await RequestCount.findOne({ ip: userIp });
+
+      if (!requestCount) {
+        // Yeni kayıt oluştur
+        requestCount = new RequestCount({ ip: userIp, count: 1, lastRequestDate: new Date() });
+      } else {
+        const now = new Date();
+        const oneWeekAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+
+        // Eğer son istek tarihi bir haftadan eskiyse, sayacı sıfırla
+        if (requestCount.lastRequestDate < oneWeekAgo) {
+          requestCount.count = 1;
+          requestCount.lastRequestDate = now;
+        } else {
+          // Haftalık limit kontrolü
+          if (requestCount.count >= MAX_EVALUATIONS_PER_WEEK) {
+            return res.status(429).json({ message: 'Haftalık istek limitine ulaştınız. Lütfen bir hafta sonra tekrar deneyin.' });
+          }
+          requestCount.count += 1;
+          requestCount.lastRequestDate = now;
+        }
+      }
+
+      // Kayıtları güncelle
+      await requestCount.save();
+    }
+
     const carData = req.body;
 
     // 'carData' nesnesini JSON formatında ve okunabilir bir şekilde stringe çeviriyoruz
@@ -18,8 +57,8 @@ exports.evaluateCar = async (req, res) => {
     const { Marka: brand, Seri: series, Model: model, Yıl: year, KM: kmString, fiyat: priceString } = carData;
 
     // 'KM' ve 'Fiyat' alanlarını sayıya dönüştürme
-    const km = parseInt(kmString.replace(/\D/g, '')) || 0; // Örneğin '294.000' -> 294000
-    const price = parseInt(priceString.replace(/\D/g, '')) || 0; // Örneğin '100.000 TL' -> 100000
+    const km = parseInt(kmString.replace(/\D/g, '')) || 0;
+    const price = parseInt(priceString.replace(/\D/g, '')) || 0;
 
     // KM aralığını belirleyelim (örneğin, ±25,000 km)
     const kmRange = 25000;
@@ -77,12 +116,16 @@ Araç Bilgileri:
 ${carDataString}
 `;
 
+    // Kullanılacak API anahtarını belirleyin
+    const openaiApiKey = userApiKey || process.env.OPENAI_API_KEY;
+    console.log("openaiApiKey", openaiApiKey);
+
     // OpenAI API çağrısı
     const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
       },
       body: JSON.stringify({
         model: 'gpt-3.5-turbo',
@@ -109,6 +152,8 @@ ${carDataString}
       evaluation,
       similarCount: count,
       averagePrice: averagePrice.toFixed(2),
+      // Kullanıcı kendi API anahtarını kullandıysa, remainingEvaluations'ı göndermeyelim
+      ...(userApiKey ? {} : { remainingEvaluations: MAX_EVALUATIONS_PER_WEEK - requestCount.count }),
     });
   } catch (error) {
     console.error('Araç değerlendirmesi sırasında hata:', error.message);
@@ -121,6 +166,7 @@ ${carDataString}
     res.status(500).json({ message: 'Araç değerlendirmesi yapılamadı.' });
   }
 };
+
 
 
 // Araç verilerini kaydetme veya güncelleme
